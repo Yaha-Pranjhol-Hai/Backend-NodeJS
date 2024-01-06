@@ -100,7 +100,7 @@ const loginUser = asyncHandler(async (req, res) => {
   // Step 1 - get username and all other fields for verification
   const { username, email, password } = req.body;
 
-  if (!(username && email)) {
+  if (!(username || email)) {
     throw new ApiError(300, "Username or Email is required");
   }
 
