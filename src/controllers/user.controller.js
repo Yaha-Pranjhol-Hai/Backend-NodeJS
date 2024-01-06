@@ -157,7 +157,7 @@ const loginUser = asyncHandler(async (req, res) => {
 const logoutUser = asyncHandler(async (req, res) => {
   // Step 1 - Find the user from the database and delete the user's refreshToken.
   await User.findByIdAndUpdate(
-    req.user?._id, // we got to acces req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
+    req.user._id, // we got to acces req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
     {
       $set: {
         refreshToken: undefined,
