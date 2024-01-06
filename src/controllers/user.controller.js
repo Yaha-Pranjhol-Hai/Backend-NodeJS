@@ -11,11 +11,10 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const accessToken = await user.generateAccessToken(); // don't forget to put brackets since it is a method.
     const refreshToken = await user.generateRefreshToken();
 
-    user.refreshToken = refreshToken //added the token in the user object
-    await user.save({ validateBeforeSave: false }) // whenever we try save it the mongoose model will kick in so for that we wrote validateBeforeSave parameter.
+    user.refreshToken = refreshToken; //added the token in the user object
+    await user.save({ validateBeforeSave: false }); // whenever we try save it the mongoose model will kick in so for that we wrote validateBeforeSave parameter.
 
-    return { accessToken, refreshToken}
-
+    return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError(
       500,
@@ -101,7 +100,7 @@ const loginUser = asyncHandler(async (req, res) => {
   // Step 1 - get username and all other fields for verification
   const { username, email, password } = req.body;
 
-  if (!(username || email)) {
+  if (!(username && email)) {
     throw new ApiError(300, "Username or Email is required");
   }
 
@@ -123,55 +122,62 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   // Step 4 - create access and refresh tokens
-  const { accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
 
   // Step 5 - send cookies
-  const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 
   // We need options object becuse by delfault anybody can change the token from the frontend, by making both the parameters true now you can only modify them from the server.
   const options = {
     httpOnly: true,
     secure: true,
-  }
-  
+  };
+
   return res
-  .status(200)
-  .cookie("accessToken", accessToken, options) // don't forget to send here options as an argument.
-  .cookie("refreshToken", refreshToken, options)
-  .json(
-    new ApiResponse(200,
+    .status(200)
+    .cookie("accessToken", accessToken, options) // don't forget to send here options as an argument.
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
         {
-            user: loggedInUser, accessToken, refreshToken
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
         },
         "User Logged In Successfully"
-        )
-  )
+      )
+    );
 });
 
-const logoutUser = asyncHandler(async (req,res) => {
-    // Step 1 - Find the user from the database and delete the user's refreshToken.
-    await User.findByIdAndUpdate(
-        req.user?._id, // we got to acces req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
-        {
-            $set: {
-                refreshToken: undefined
-            }
-        },
-        {
-            new: true // It gives us the updated value in the response.
-        }
-    )
-    // Step 2 - Clear the cookies of the user.
-    const options = {
-        httpOnly: true,
-        secure: true
+const logoutUser = asyncHandler(async (req, res) => {
+  // Step 1 - Find the user from the database and delete the user's refreshToken.
+  await User.findByIdAndUpdate(
+    req.user?._id, // we got to acces req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true, // It gives us the updated value in the response.
     }
+  );
+  // Step 2 - Clear the cookies of the user.
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
 
-    return res
+  return res
     .status(200)
     .clearCookie("accesToken", options)
     .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "User LoggedOut Successfully"))
-})
+    .json(new ApiResponse(200, {}, "User LoggedOut Successfully"));
+});
 
 export { registerUser, loginUser, logoutUser };
