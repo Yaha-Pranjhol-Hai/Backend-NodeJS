@@ -64,7 +64,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // Step 5 - Upload on cloudinary
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath); // If there is no coverImage ten cloudinary will give you empty string.
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath); // If there is no coverImage then cloudinary will give you empty string.
 
   if (!avatar) {
     throw new ApiError(400, "Avatar file is required!");
@@ -131,10 +131,10 @@ const loginUser = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
-  // We need options object becuse by delfault anybody can change the token from the frontend, by making both the parameters true now you can only modify them from the server.
+  // We need options object becuse by default anybody can change the token from the frontend, by making both the parameters true now you can only modify them from the server.
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: false,
   };
 
   return res
@@ -157,7 +157,7 @@ const loginUser = asyncHandler(async (req, res) => {
 const logoutUser = asyncHandler(async (req, res) => {
   // Step 1 - Find the user from the database and delete the user's refreshToken.
   await User.findByIdAndUpdate(
-    req.user._id, // we got to acces req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
+    req.user._id, // we got to access req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
     {
       $set: {
         refreshToken: undefined,
@@ -170,12 +170,12 @@ const logoutUser = asyncHandler(async (req, res) => {
   // Step 2 - Clear the cookies of the user.
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: false, // secure: false setting allows the cookies to be transmitted over both HTTP and HTTPS connections, which might be useful during development or testing when using HTTP. However, in a production environment, it is recommended to set secure: true to ensure the security of the transmitted cookies.
   };
 
   return res
     .status(200)
-    .clearCookie("accesToken", options)
+    .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User LoggedOut Successfully"));
 });
