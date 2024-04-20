@@ -163,8 +163,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id, // we got to access req.user because of the auth.middleware.js which gives us the verified user, and now we have the data of the loggedInUser.
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1, //This flag removes the field from the document.
       },
     },
     {
