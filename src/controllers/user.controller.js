@@ -1,9 +1,8 @@
 import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
-import { User } from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -277,16 +276,35 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
   const avatarLocalPath = req.file?.path;
 
   if(!avatarLocalPath){
-    throw ApiError(400, "Avatar file is Required");
+    throw new ApiError(400, "Avatar file is Required");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  // To-Do -  Delete old Image
+  const user = await User.findById(req.user?._id).select(avatar);
 
-  if(!avatar.url) {
-    throw ApiError(400, "Error while uploading Avatar");
+  if(!user) {
+    throw new ApiError(400, "User not Found")
+  }
+
+  let newAvatarUrl;
+  try {
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    newAvatarUrl = avatar.url;
+  } catch (error) {
+    throw new ApiError(400, "Error while uploading Avatar");
+    
+  }
+
+  if(!newAvatarUrl) {
+    throw new ApiError(400, "Error while uploading new Avatar")
+  }
+
+  if(user.avatar && user.avatar !== newAvatarUrl) {
+    const publicId = user.avatar.split('/').pop().split('.')[0];
+    await deleteFromCloudinary(publicId);
   }
   
-  const user = await User.findByIdAndUpdate(
+  const updatedUser = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -300,7 +318,7 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
     return res
     .status(200)
     .json(
-      new ApiResponse(200, user, "User Avatar Updated SuccessFully")
+      new ApiResponse(200, updatedUser, "User Avatar Updated SuccessFully")
     )
 })
 
@@ -308,13 +326,13 @@ const updateUserCoverImage = asyncHandler(async(req,res) => {
   const coverLocalPath = req.file?.path;
 
   if(!coverLocalPath) {
-    throw ApiError(400, "CoverImage is Required");
+    throw new ApiError(400, "CoverImage is Required");
   }
 
   const coverImage = await uploadOnCloudinary(coverLocalPath);
 
   if(!coverImage) {
-    throw ApiError(400, "Error while uploading CoverImage")
+    throw new ApiError(400, "Error while uploading CoverImage")
   }
 
   const user = await User.findByIdAndUpdate(
